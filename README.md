@@ -1,6 +1,6 @@
 # Lattice Paths
 
-Package for dealing with lattice paths.
+Package (work-in-progress) for dealing with lattice paths.
 
 # Examples
 
