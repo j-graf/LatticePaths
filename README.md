@@ -87,7 +87,7 @@ nPathType = ((3,2),(0,0),(5,2),(3,0))
 allPaths(nPathType,"S","E")
 ```
 
--- Bagged list all $n$-paths arising from the Lindström–Gessel–Viennot lemma for computing the skew Schur function $S_{\lambda/\mu}(x_1,\ldots,x_n)$ (by default $n=\ell(\lambda)$ if $n$ is not provided):
+-- Bagged list all $n$-paths arising from the Lindström–Gessel–Viennot lemma for computing the skew Schur function $S_{\lambda/\mu}(x_1,\ldots,x_n)$ (by default $n=\ell(\lambda)$ if $n$ is not provided) (see \[EC1, p.246-248\] and \[EC2, p.377-378\]):
 ```
 lam = {3,2}
 mu = {1}
