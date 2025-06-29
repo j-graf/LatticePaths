@@ -40,7 +40,31 @@ isNorthEast LatticePath := lattice -> (
 -- binary operators
 
 -- the dimension of a LatticePath, i.e., the dimension of its vectors
-dim LatticePath := lattice -> #lattice#0
+dim LatticePath := lattice -> (
+    if #lattice == 0 then return 0;
+    #lattice#0
+    )
+
+net LatticePath := lattice -> (
+    if #lattice == 0 then return "∅";
+    ans := toString(lattice#0);
+    for i from 1 to #lattice-1 do (
+        ans = ans|" -> "|toString(lattice#i);
+        );
+    ans
+    )
+
+toString LatticePath := lattice -> (
+    "LatticePath: "|(net lattice)
+    )
+
+LatticePath == LatticePath := (lattice1,lattice2) -> (
+    if #lattice1 != #lattice2 or dim lattice1 != dim lattice2 then return false;
+    for i from 0 to #lattice1-1 do (
+        if lattice1#i != lattice2#i then return false;
+        );
+    true
+    )
 
 ---------- LatticeNPath
 
@@ -66,6 +90,31 @@ latticeNPath := seq -> (
 
 -- the dimension of a LatticeNPath, i.e., the dimension of its vectors
 dim LatticeNPath := nPath -> dim nPath#0
+
+net LatticeNPath := nPath -> (
+    if #nPath == 0 then return "[]";
+    ans := net nPath#0;
+    for i from 1 to #nPath-1 do (
+        ans = ans||(net nPath#i)
+        );
+    
+    lBrak := "[ ";
+    rBrak := " ]";
+    if #nPath >= 2 then (
+        lBrak = "┌ ";
+        rBrak = " ┐";
+        for i from 1 to #nPath-2 do (
+            lBrak = lBrak||"│ ";
+            rBrak = rBrak||" │";
+            );
+        lBrak = lBrak||"└ ";
+        rBrak = rBrak||" ┘";
+        );
+
+    lBrak|ans|rBrak
+    )
+
+toString LatticeNPath := nPath -> "-*a LatticeNPath with "|toString(#nPath)|" paths*-"
 
 -- binary operators
 
@@ -208,6 +257,7 @@ weight LatticePath := lattice -> (
     ans := 1;
     
     theSteps := stepList lattice;
+    if not all(theSteps, aStep -> isMember(aStep,{(1,0),(-1,0),(0,1),(0,-1)})) then error "expected only steps NESW";
     ans = product for i from 0 to #theSteps-1 list (
         if theSteps#i == (1,0) then (
             x_(lattice#i#1)
@@ -279,41 +329,6 @@ allWords (Sequence,String,String) := (theType,yLetter,xLetter) -> (
     ans/deepSplice
     )
 
--*
--- input: the type of a LatticeNPath, i.e., four n-tuples of integers [EC1, p.246]
--- output: List of all 'words' that describe LatticeNPaths of given type, with steps SE
---     'words' are a List of characters "S" and "E", e.g., {"S","S","E","S","E"}
-allWordsSE = method(TypicalValue => List)
-allWordsSE := (alpha,beta,gamma,delta) -> (
-    if (instance(alpha,ZZ) and instance(beta,ZZ) and instance(gamma,ZZ) and instance(delta,ZZ)) then (
-        alpha = sequence alpha;
-        beta = sequence beta;
-        gamma = sequence gamma;
-        delta = sequence delta;
-        );
-        
-    if not (#alpha == #beta and #alpha == #gamma and #alpha == #delta) then (
-        error "not a valid path type";
-        );
-    
-    wordList := for i from 0 to #alpha-1 list (
-        numS := gamma#i - delta#i;
-        numE := alpha#i - beta#i;
-
-        uniquePermutations(toList(numS:"S")|toList(numE:"E"))
-        );
-
-    if #wordList == 1 then return(apply(wordList#0, theWord -> sequence theWord));
-    
-    ans := wordList#0;
-    for i from 1 to #wordList-1 do (
-        ans = ans ** wordList#i;
-        );
-
-    ans/deepSplice
-    )
-*-
-
 -- input: Sequence startPoint in ZZ^2, and List or String theWord containing characters "N", "S", "E", or "W"
 --     e.g., {"N","N","E","N","E"} or "NNENE"
 -- output: LatticePath starting at startPoint, with steps following theWord
@@ -360,27 +375,6 @@ allPaths (Sequence,String,String) := (theType,yLetter,xLetter) -> (
     ans
     )
 
--*
--- input: the type of a LatticeNPath, i.e., four n-tuples of integers [EC1, p.246]
--- output: list of all LatticeNPaths of the given type
---     paths are SE
-allPathsSE = method(TypicalValue => List)
-allPathsSE := (alpha,beta,gamma,delta) -> (
-    wordListList := allWordsSE(alpha,beta,gamma,delta);
-    if instance(beta,ZZ) then (
-        beta = {beta};
-        gamma = {gamma};
-        );
-    ans = for wordList in wordListList list (
-        latticeNPath for i from 0 to #wordList-1 list (
-            wordToPath((beta#i,gamma#i),wordList#i)
-            )
-        );
-
-    ans
-    )
-*-
-
 -- input: integer n
 -- output: list of all permutations of S_n
 permList = method(TypicalValue => List)
@@ -399,10 +393,11 @@ actOnIndex (Permutation,List) := (p,theList) -> (
 --     using the bijection described in [EC1, p.246-248] and [EC2, p.377-378]
 --     paths are SE
 JTlatticeNPaths = method(TypicalValue => List)
-JTlatticeNPaths := (lam,mu) -> (
+JTlatticeNPaths (List,List,ZZ) := (lam,mu,N) -> (
+    --if N < #lam then return(Bag {});
     mu = mu|toList((#lam-#mu):0);
     n := #lam;
-    N := #lam;
+    --N := #lam;
 
     alpha := for j from 0 to #lam-1 list (
         (lam#j+n-(j+1))
@@ -420,212 +415,6 @@ JTlatticeNPaths := (lam,mu) -> (
 
     Bag flatten apply(typeList, theType -> allPaths(theType,"S","E"))
     )
-
-
-
--- examples
-
-lam = {3,2}
-mu = {1}
-
-dTest = JTlatticeNPaths(lam,mu)
-
-#dTest
-for nPath in dTest do (
-    print tex nPath;
-    print tex weight nPath;
-    print "";
+JTlatticeNPaths (List,List) := (lam,mu) -> (
+    JTlatticeNPaths(lam,mu,#lam)
     )
-
-
-
-
-
-
-# allWords((3,0,5,3),"S","E")
-# allPaths((3,0,5,3),"S","E")
-
-
-
-
-
-allWordsSE(3,0,5,3)
-
-for theElt in allWords(((3,4),(0,3),(5,2),(3,1)),"S","E") do print theElt
-for theElt in allWordsSE((3,4),(0,3),(5,2),(3,1)) do print theElt
-
-
-allWords((3,0,5,3),"N","E")
-allWords((1,0,0,1),"N","E")
-for theElt in allWords(((1,0),(0,0),(0,0),(0,0)),"N","E") do print theElt
-
-toSequence {}
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-cTest = allPathsSE(3,0,5,3)
-for lattice in cTest do (
-    print tex lattice;
-    print tex weight lattice;
-    print "";
-    )
-
-aTest = allPathsSE((3,4),(0,3),(5,2),(3,1))
-for nPath in aTest do (
-    print tex nPath;
-    print tex weight nPath;
-    print "";
-    )
-
-
-print tex wordToPath((0,5),{"S","S","E","S","E"})
-type wordToPath((0,5),{"S","S","E","S","E"})
-stepList wordToPath((0,5),{"S","S","E","S","E"})
-weight wordToPath((0,5),{"S","S","E","S","E"})
-
-
-#bTest
-
-
--- method examples
-
-
-youngTableau Partition := p -> (
-    tableau:= new YoungTableau;
-    tableau#partition = p;
-    tableau#values = new MutableList from ((sum toList p):0) ;
-    tableau
-)
-
-
-
-youngTableau(Partition,List):= (p,L)->(
-    if(sum toList p != #L) then error " Partition size does not match with the length of the list L";
-    tableau:= new YoungTableau;
-    tableau#partition =p;
-    tableau#values = new MutableList from L;
-    tableau
-)
-
-entries YoungTableau := tableau -> toList tableau#values
-
-
--- examples
-
-
-testLattice = latticePath {(1,2),(2,3),(9,1)}
-toString(testLattice#0)
-dim testLattice
-print tex testLattice
-
-toSequence(toList(1,2)+toList(5,1))
-
-aList = {latticePath {(1,1),(2,1),(2,2)}, latticePath {(0,0),(3,1),(3,3)}, latticePath {(-1,1),(3,1),(2,2)}}
-print latticeListToTex aList
-
-
-
-
-
-
-
-test1 = latticePath {(1,1),(1,2),(2,2)}
-test2 = latticePath {(4,1),(2,3),(3,2),(1,1)}
-test3 = latticeNPath {test1,test2}
-
-
-
-type(latticeNPath{test1})
-test4 = type test1
-
-print tex test1
-
-
-print tex test3
-
-
-isIntersecting test3
-xMin test3
-xMax test3
-yMin test3
-yMax test3
-dim test3
-type test3
-
-
-
-f = method(TypicalValue => ZZ)
-f LatticePath := theLattice -> (print theLattice)
-f LatticeNPath := nPath -> (print nPath)
-
-
-latticeNPath test1
-test4#0
-
-
-toSequence {}
-
-
-theTest = 1
-sequence theTest
-
-class (1,2,3,4)
-
-
-sequence (1,2,3)
-
-
-
-aList = Bag unique permutations {"S","S","S","E","E","E"}
-for elt in aList do print elt
-
-
-aList = Bag uniquePermutations((3:"S")|(3:"E"))
-for elt in aList do print elt
-
-
-
-
-for theLetter in "Hello" do print(theLetter)
-
-
-
-
-hashTest = new HashTable from {
-        "N" => {1,0},
-        "E" => {0,1},
-        "S" => {-1,0},
-        "W" => {0,-1}}
-
-hashTest#"n"
-
-
-# (({1,2} ** {3,4} ** {5,6} ** {7,8})/deepSplice)
-
-
-^** {{1,2},{3,4}}
-
-
-sequence {"N","S","E"}
-
-
-test5 = permList 3
-class test5#0
-test5 = permutation {4,1,2,3}
-actOnIndex(test5,{2,3,2,5})
