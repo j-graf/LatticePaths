@@ -44,10 +44,10 @@ dim theNPath
 
 ## Methods
 
-- Check if there are any intersections in an $n$-path, or in a list/sequence of paths:
+- Check if there are any intersections in an $n$-path, in a list of paths, or a pair of paths:
 ```
 isIntersecting theNPath
-isIntersecting {thePath1,thePath2}
+isIntersecting {thePath1,thePath2,thePath3}
 isIntersecting (thePath1,thePath3)
 ```
 
@@ -73,15 +73,8 @@ tex theNPath
 
 - Get the weight of an $n$-path or path \[see EC1, p.246\], assuming the steps are all NESW:
 ```
-weight thePath
+weight thePath2
 weight theNPath
-```
-
-- If two paths intersect, swap their 'tails':
-```
-thePath4 = latticePath{(1,2),(3,4),(5,6)}
-thePath5 = latticePath{(0,1),(1,1),(3,4),(6,7)}
-swapTails(thePath4,thePath5)
 ```
 
 ## Algorithms
