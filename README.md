@@ -105,7 +105,8 @@ theNPaths = JTlatticeNPaths(lam,mu)
 
 - Output all $n$-paths (and their weights) from LGV lemma to a .tex file:
 ```
-f = "output"|toString(currentTime())|".tex"
+makeDirectory "outputFolder"
+f = "outputFolder/output"|toString(currentTime())|".tex"
 for nPath in theNPaths do (
     f << tex nPath << endl;
     f << tex weight nPath << endl << endl;
