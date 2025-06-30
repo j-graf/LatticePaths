@@ -77,6 +77,13 @@ weight thePath
 weight theNPath
 ```
 
+-- If two paths intersect, swap their 'tails':
+```
+thePath4 = latticePath{(1,2),(3,4),(5,6)}
+thePath5 = latticePath{(0,1),(1,1),(3,4),(6,7)}
+swapTails(thePath4,thePath5)
+```
+
 ## Algorithms
 
 - List all paths (or $n$-paths) with the given type, and the given steps
