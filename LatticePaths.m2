@@ -12,7 +12,8 @@ LatticePath = new Type of BasicList
 latticePath = method(TypicalValue => LatticePath)
 
 latticePath List := seq -> (
-    if (any(seq,theVec -> #theVec != #seq#0)) then error "expected all vectors to have the same dimension";
+    if any(seq,theVec -> not instance(theVec,Sequence)) then error "expected list of sequences";
+    if any(seq,theVec -> #theVec != #seq#0) then error "expected all vectors to have the same dimension";
     --if (any(seq,theVec -> #theVec != 2)) then error "expected all vectors to have dimension 2";
     lattice := new LatticePath from for theElt in seq list toSequence theElt;
     
@@ -273,6 +274,23 @@ weight LatticeNPath := nPath -> (
     product for lattice in nPath list weight lattice
     )
 
+-- input: two lattice paths
+-- output: sequence of two lattice paths
+--     let v be the first vector of lattice1 that is shared by both lattices,
+--         say a1 -> v -> a3 -> ... and b1 -> v -> b3 -> ...
+--     output is the list of paths a1 -> v -> b3 -> ... and b1 -> v -> a3 -> ...
+--     if no such v exists, then returns (lattice1,lattice2)
+swapTails = method(TypicalValue => List)
+swapTails (LatticePath,LatticePath) := (lattice1,lattice2) -> (
+    theIndex1 := position(toList lattice1,theVec -> isMember(theVec,toList lattice2));
+    theIndex2 := position(toList lattice2,theVec -> theVec == lattice1#theIndex1);
+    if theIndex1 === null then return (lattice1,lattice2);
+
+    new1 := latticePath ((for i from 0 to theIndex1 list lattice1#i)|(for i from theIndex2+1 to #lattice2-1 list lattice2#i));
+    new2 := latticePath ((for i from 0 to theIndex2 list lattice2#i)|(for i from theIndex1+1 to #lattice1-1 list lattice1#i));
+
+    (new1,new2)
+    )
 
 -- algorithms
 
@@ -351,10 +369,12 @@ wordToPath (Sequence,List) := (startPoint,theWord) -> (
         ans = append(ans,ans#-1 + letterToStep#theLetter);
         );
 
-    latticePath ans
+    latticePath for theVec in ans list toSequence theVec
     )
 
 -- input: the type of a LatticeNPath, i.e., four n-tuples of integers [EC1, p.246]
+--     yLetter is "N" or "S"
+--     xLetter is "E" or "W"
 -- output: list of all LatticeNPaths of the given type
 --     paths are SE
 allPaths = method(TypicalValue => List)
@@ -362,11 +382,11 @@ allPaths (Sequence,String,String) := (theType,yLetter,xLetter) -> (
     wordListList := allWords(theType,yLetter,xLetter);
     beta := theType#1;
     gamma := theType#2;
-   if instance(beta,ZZ) then (
+    if instance(beta,ZZ) then (
         beta = {beta};
         gamma = {gamma};
         );
-    ans = for wordList in wordListList list (
+    ans := for wordList in wordListList list (
         latticeNPath for i from 0 to #wordList-1 list (
             wordToPath((beta#i,gamma#i),wordList#i)
             )
@@ -388,7 +408,7 @@ actOnIndex (Permutation,List) := (p,theList) -> (
     for iMap in p list theList#(iMap-1)
     )
 
--- input: Partitions lam,mu
+-- input: Partitions lam,mu, integer N (optional)
 -- output: Bag of LatticeNPaths arising from Lindström–Gessel–Viennot lemma for S_{lam/mu}
 --     using the bijection described in [EC1, p.246-248] and [EC2, p.377-378]
 --     paths are SE
