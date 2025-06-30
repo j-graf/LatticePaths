@@ -77,7 +77,7 @@ weight thePath
 weight theNPath
 ```
 
--- If two paths intersect, swap their 'tails':
+- If two paths intersect, swap their 'tails':
 ```
 thePath4 = latticePath{(1,2),(3,4),(5,6)}
 thePath5 = latticePath{(0,1),(1,1),(3,4),(6,7)}
@@ -94,11 +94,21 @@ nPathType = ((3,2),(0,0),(5,2),(3,0))
 allPaths(nPathType,"S","E")
 ```
 
--- Bagged list all $n$-paths arising from the Lindström–Gessel–Viennot lemma for computing the skew Schur function $S_{\lambda/\mu}(x_1,\ldots,x_n)$ (by default $n=\ell(\lambda)$ if $n$ is not provided) (see \[EC1, p.246-248\] and \[EC2, p.377-378\]):
+- Bagged list all $n$-paths arising from the Lindström–Gessel–Viennot lemma for computing the skew Schur function $S_{\lambda/\mu}(x_1,\ldots,x_n)$ (by default $n=\ell(\lambda)$ if $n$ is not provided) (see \[EC1, p.246-248\] and \[EC2, p.377-378\]):
 ```
 lam = {3,2}
 mu = {1}
 n = 3
 JTlatticeNPaths(lam,mu,n)
-JTlatticeNPaths(lam,mu)
+theNPaths = JTlatticeNPaths(lam,mu)
+```
+
+- Output all $n$-paths (and their weights) from LGV lemma to a .tex file:
+```
+f = "output"|toString(currentTime())|".tex"
+for nPath in theNPaths do (
+    f << tex theLattice << endl;
+    f << tex weight theLattice << endl << endl;
+    )
+f << close
 ```
