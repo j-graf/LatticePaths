@@ -1,9 +1,21 @@
+newPackage(
+    "LatticePaths",
+    Version => "0.1",
+    Date => "June 30, 2025",
+    Authors => {
+	{Name => "John Graf", Email => "grafjohnr@gmail.com", HomePage => "https://j-graf.github.io/"}},
+    Headline => "a package for constructing lattice paths",
+    Keywords => {"Combinatorics"},
+    DebuggingMode => false
+    )
+
+export {"LatticePath", "latticePath", "LatticeNPath", "latticeNPath",
+        "stepList", "isNorthEast", "isIntersecting", "weight", "xMin", "xMax", "yMin", "yMax", "type",
+        "allPaths", "JTlatticeNPaths"}
 
 needsPackage "Permutations"
 
 WeightRing = ZZ[x_1..x_20]
-
-
 
 LatticePath = new Type of BasicList
 
@@ -75,7 +87,7 @@ LatticeNPath = new Type of BasicList
 
 latticeNPath = method(TypicalValue => LatticeNPath)
 
-latticeNPath := seq -> (
+latticeNPath List := seq -> (
     seq = sequence seq;
     if instance(seq#0,List) and #seq==1 then (
         seq = toSequence seq#0;
@@ -124,14 +136,23 @@ toString LatticeNPath := nPath -> "-*a LatticeNPath with "|toString(#nPath)|" pa
 -- input: LatticeNList or Sequence/List of Type LatticeList
 -- output: true if lattices are intersecting, false if lattices are non-intersecting
 isIntersecting = method(TypicalValue => Boolean)
-isIntersecting := latticeList -> (
+isIntersecting LatticeNPath := nPath -> (
+    -*
     latticeList = sequence latticeList;
     if (instance(latticeList#0,List) or instance(latticeList#0,LatticeNPath)) and #latticeList==1 then (
         latticeList = toSequence latticeList#0;
         );
-    allVecs := flatten for theLattice in latticeList list unique for theVec in theLattice list theVec;
+    *-
+    allVecs := flatten for theLattice in nPath list unique for theVec in theLattice list theVec;
     
     (#allVecs > #(unique allVecs))
+    )
+isIntersecting List := latticeList -> (
+    if not all(latticeList, theLattice -> instance(theLattice,LatticePath)) then error "expected list of lattices";
+    isIntersecting latticeNPath latticeList
+    )
+isIntersecting (LatticePath,LatticePath) := (lattice1,lattice2) -> (
+    isIntersecting latticeNPath {lattice1,lattice2}
     )
 
 -- smallest x-value in a LatticePath or LatticeNPath
@@ -180,7 +201,7 @@ type LatticeNPath := nPath -> (
 
     (alpha,beta,gamma,delta)
     )
-type LatticePath := lattice -> type latticeNPath lattice
+type LatticePath := lattice -> type latticeNPath {lattice}
 
 tex LatticeNPath := latticeList -> (
     if dim latticeList != 2 then error "expected lattice to have dimension 2";
@@ -249,7 +270,7 @@ tex LatticeNPath := latticeList -> (
 tex LatticePath := lattice -> (
     if dim lattice != 2 then error "expected lattice to have dimension 2";
 
-    tex latticeNPath lattice
+    tex latticeNPath {lattice}
     )
 
 -- weight of a LatticePath or LatticeNPath [EC1, p.246]
@@ -438,3 +459,5 @@ JTlatticeNPaths (List,List,ZZ) := (lam,mu,N) -> (
 JTlatticeNPaths (List,List) := (lam,mu) -> (
     JTlatticeNPaths(lam,mu,#lam)
     )
+
+end--
