@@ -107,8 +107,8 @@ theNPaths = JTlatticeNPaths(lam,mu)
 ```
 f = "output"|toString(currentTime())|".tex"
 for nPath in theNPaths do (
-    f << tex theLattice << endl;
-    f << tex weight theLattice << endl << endl;
+    f << tex nPath << endl;
+    f << tex weight nPath << endl << endl;
     )
 f << close
 ```
