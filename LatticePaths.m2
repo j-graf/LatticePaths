@@ -10,10 +10,13 @@ newPackage(
     )
 
 export {"LatticePath", "latticePath", "LatticeNPath", "latticeNPath",
-        "stepList", "isNorthEast", "isIntersecting", "weight", "xMin", "xMax", "yMin", "yMax", "type",
-        "allPaths", "JTlatticeNPaths"}
+        "isNE", "isNW", "isSE", "isSW", "isCardinal", "isIntersecting",
+        "stepList", "weight", "type", "xMin", "xMax", "yMin", "yMax",
+        "cardinalToSteps", "cardinalToChars",
+        "allPaths", "JTlatticeNPaths", "toSSYT"}
 
 needsPackage "Permutations"
+needsPackage "SkewTableaux"
 
 WeightRing = ZZ[x_1..x_20]
 
@@ -22,14 +25,55 @@ LatticePath = new Type of BasicList
 -- constructors
 
 latticePath = method(TypicalValue => LatticePath)
-
-latticePath List := seq -> (
-    if any(seq,theVec -> not instance(theVec,Sequence)) then error "expected list of sequences";
-    if any(seq,theVec -> #theVec != #seq#0) then error "expected all vectors to have the same dimension";
+latticePath List := vectorList -> (
+    if any(vectorList,theVec -> not instance(theVec,Sequence)) then error "expected list of sequences";
+    if any(vectorList,theVec -> #theVec != #vectorList#0) then error "expected all vectors to have the same dimension";
     --if (any(seq,theVec -> #theVec != 2)) then error "expected all vectors to have dimension 2";
-    lattice := new LatticePath from for theElt in seq list toSequence theElt;
+    lattice := new LatticePath from for theElt in vectorList list toSequence theElt;
     
     lattice
+    )
+-*
+latticePath (Sequence,List) := (startPoint,theWord) -> (
+    if #startPoint != 2 then error "expected 2D starting point";
+    ans := {toList startPoint};
+
+    letterToStep := new HashTable from {
+        "N" => {0,1},
+        "n" => {0,1},
+        "E" => {1,0},
+        "e" => {1,0},
+        "S" => {0,-1},
+        "s" => {0,-1},
+        "W" => {-1,0},
+        "w" => {-1,0}};
+    
+    for theLetter in theWord do (
+        ans = append(ans,ans#-1 + letterToStep#theLetter);
+        );
+
+    latticePath for theVec in ans list toSequence theVec
+    )
+*-
+latticePath (Sequence,String) := (startPoint,theWord) -> (
+    if #startPoint != 2 then error "expected 2D starting point";
+    ans := {toList startPoint};
+
+    letterToStep := new HashTable from {
+        "N" => {0,1},
+        "n" => {0,1},
+        "E" => {1,0},
+        "e" => {1,0},
+        "S" => {0,-1},
+        "s" => {0,-1},
+        "W" => {-1,0},
+        "w" => {-1,0}};
+    
+    for theLetter in theWord do (
+        ans = append(ans,ans#-1 + letterToStep#theLetter);
+        );
+
+    latticePath for theVec in ans list toSequence theVec
     )
 
 -- methods
@@ -44,10 +88,34 @@ stepList LatticePath := lattice -> (
 
 -- input: a LatticePath
 -- output: true if the lattice has only NE steps, false otherwise
-isNorthEast = method(TypicalValue => Boolean)
-isNorthEast LatticePath := lattice -> (
+isNE = method(TypicalValue => Boolean)
+isNE LatticePath := lattice -> (
     theStepList := stepList lattice;
-    not any(theStepList,theStep -> not isMember(theStep,{(1,0),(0,1)}))
+    all(theStepList,theStep -> isMember(theStep,{(1,0),(0,1)}))
+    )
+
+isNW = method(TypicalValue => Boolean)
+isNW LatticePath := lattice -> (
+    theStepList := stepList lattice;
+    all(theStepList,theStep -> isMember(theStep,{(-1,0),(0,1)}))
+    )
+
+isSE = method(TypicalValue => Boolean)
+isSE LatticePath := lattice -> (
+    theStepList := stepList lattice;
+    all(theStepList,theStep -> isMember(theStep,{(1,0),(0,-1)}))
+    )
+
+isSW = method(TypicalValue => Boolean)
+isSW LatticePath := lattice -> (
+    theStepList := stepList lattice;
+    all(theStepList,theStep -> isMember(theStep,{(-1,0),(0,-1)}))
+    )
+
+isCardinal = method(TypicalValue => Boolean)
+isCardinal LatticePath := lattice -> (
+    theStepList := stepList lattice;
+    all(theStepList,theStep -> isMember(theStep,{(1,0),(-1,0),(0,1),(0,-1)}))
     )
 
 -- binary operators
@@ -274,25 +342,27 @@ tex LatticePath := lattice -> (
     )
 
 -- weight of a LatticePath or LatticeNPath [EC1, p.246]
-weight = method(TypicalValue => ring x_1)
+weight = method(TypicalValue => Sequence)
 weight LatticePath := lattice -> (
-    ans := 1;
-    
     theSteps := stepList lattice;
     if not all(theSteps, aStep -> isMember(aStep,{(1,0),(-1,0),(0,1),(0,-1)})) then error "expected only steps NESW";
-    ans = product for i from 0 to #theSteps-1 list (
-        if theSteps#i == (1,0) then (
-            x_(lattice#i#1)
+
+    horizHeights := for i from 0 to #theSteps-1 list (
+        if theSteps#i == (1,0) or theSteps#i == (-1,0) then (
+            lattice#i#1
             ) else (
-            1
+            continue
             )
         );
-
-    ans
-    --if ans == 1 then return(0) else return(ans);
+    
+    if #horizHeights == 0 then return toSequence horizHeights;
+    toSequence for i from 1 to max horizHeights list number(horizHeights, theHeight -> theHeight == i)
     )
 weight LatticeNPath := nPath -> (
-    product for lattice in nPath list weight lattice
+    weightList := for thePath in nPath list weight thePath;
+    maxLen := max for theWeight in weightList list #theWeight;
+
+    toSequence sum for theWeight in weightList list (toList(theWeight)|toList((maxLen-#theWeight):0))
     )
 
 -- input: two lattice paths
@@ -316,40 +386,29 @@ swapTails (LatticePath,LatticePath) := (lattice1,lattice2) -> (
 -- algorithms
 
 -- input: the type of a LatticeNPath, i.e., four n-tuples of integers [EC1, p.246]
---     yLetter, either "N" or "S", the direction paths move in the y-direction
---     xLetter, either "E" or "W", the direction paths move in the x-direction
+--     theCardinal: string of "N","S","E","W" of length 2
 -- output: List of all 'words sequences' that describe LatticeNPaths of given type
 --     'words' are a List of characters "S" and "E", e.g., {"S","S","E","S","E"}
 --     'word sequences' are sequences of length n of 'words'
 allWords = method(TypicalValue => List)
-allWords (Sequence,String,String) := (theType,yLetter,xLetter) -> (
+allWords (Sequence,String) := (theType,theCardinal) -> (
     if all(theType,theEntry -> instance(theEntry,ZZ)) then (
         theType = for theEntry in theType list sequence theEntry;
         );
     if #theType!=4 or any(theType,theEntry -> #theEntry != #theType#0) then (
         error "not a valid type for a LatticeNPath"
         );
-    
-    yLetterToStep := new HashTable from {
-        "N" => {0,1},
-        "n" => {0,1},
-        "S" => {0,-1},
-        "s" => {0,-1}};
-    xLetterToStep := new HashTable from {
-        "E" => {1,0},
-        "e" => {1,0},
-        "W" => {-1,0},
-        "w" => {-1,0}};
-    
-    yStep := yLetterToStep#yLetter;
-    xStep := xLetterToStep#xLetter;
+
+    (xStep,yStep) := cardinalToSteps theCardinal;
+    yLetter := theCardinal#0;
+    xLetter := theCardinal#1;
     
     wordList := for i from 0 to #theType#0-1 list (
         yChange := theType#3#i - theType#2#i; -- delta-gamma
         xChange := theType#0#i - theType#1#i; -- alpha-beta
         
-        yNumSteps := yChange//yStep#1;
-        xNumSteps := xChange//xStep#0;
+        yNumSteps := yChange//yStep;
+        xNumSteps := xChange//xStep;
 
         if yNumSteps < 0 or xNumSteps < 0 then (
             {}
@@ -368,8 +427,41 @@ allWords (Sequence,String,String) := (theType,yLetter,xLetter) -> (
     ans/deepSplice
     )
 
--- input: Sequence startPoint in ZZ^2, and List or String theWord containing characters "N", "S", "E", or "W"
---     e.g., {"N","N","E","N","E"} or "NNENE"
+-- output: (xStep,yStep), where xStep = +-1 and yStep = +-1
+cardinalToSteps = method(TypicalValue => Sequence)
+cardinalToSteps String := theCard -> (
+    if #theCard !=2 then error "expected string of length 2";
+    numN := number({0,1}, i -> isMember(theCard#i,{"N","n"}));
+    numS := number({0,1}, i -> isMember(theCard#i,{"S","s"}));
+    numE := number({0,1}, i -> isMember(theCard#i,{"E","e"}));
+    numW := number({0,1}, i -> isMember(theCard#i,{"W","w"}));
+
+    if numN + numS != 1 then error "expected exactly one character N or S";
+    if numE + numW != 1 then error "expected exactly one character E or W";
+
+    ((-1)^numW,(-1)^numS)
+    )
+
+cardinalToChars = method(TypicalValue => Sequence)
+cardinalToChars String := theCard -> (
+    if #theCard !=2 then error "expected string of length 2";
+    numN := number({0,1}, i -> isMember(theCard#i,{"N","n"}));
+    numS := number({0,1}, i -> isMember(theCard#i,{"S","s"}));
+    numE := number({0,1}, i -> isMember(theCard#i,{"E","e"}));
+    numW := number({0,1}, i -> isMember(theCard#i,{"W","w"}));
+
+    if numN + numS != 1 then error "expected exactly one character N or S";
+    if numE + numW != 1 then error "expected exactly one character E or W";
+
+    yChar := if numN == 1 then "N" else "S";
+    xChar := if numE == 1 then "E" else "W";
+
+    (yChar,xChar)
+    )
+
+
+-- input: Sequence startPoint in ZZ^2, and List theWord containing characters "N", "S", "E", or "W"
+--     e.g., {"N","N","E","N","E"}
 -- output: LatticePath starting at startPoint, with steps following theWord
 wordToPath = method(TypicalValue => LatticePath)
 wordToPath (Sequence,List) := (startPoint,theWord) -> (
@@ -399,8 +491,10 @@ wordToPath (Sequence,List) := (startPoint,theWord) -> (
 -- output: list of all LatticeNPaths of the given type
 --     paths are SE
 allPaths = method(TypicalValue => List)
-allPaths (Sequence,String,String) := (theType,yLetter,xLetter) -> (
-    wordListList := allWords(theType,yLetter,xLetter);
+allPaths (Sequence,String) := (theType,theCardinal) -> (
+    (yLetter,xLetter) := cardinalToChars theCardinal;
+    
+    wordListList := allWords(theType,theCardinal);
     beta := theType#1;
     gamma := theType#2;
     if instance(beta,ZZ) then (
@@ -409,7 +503,7 @@ allPaths (Sequence,String,String) := (theType,yLetter,xLetter) -> (
         );
     ans := for wordList in wordListList list (
         latticeNPath for i from 0 to #wordList-1 list (
-            wordToPath((beta#i,gamma#i),wordList#i)
+            wordToPath((beta#i,gamma#i), wordList#i)
             )
         );
 
@@ -429,16 +523,15 @@ actOnIndex (Permutation,List) := (p,theList) -> (
     for iMap in p list theList#(iMap-1)
     )
 
--- input: Partitions lam,mu, integer N (optional)
+-- input: Partitions lam,mu,theVersion = "EC2" or "website" integer N (optional)
 -- output: Bag of LatticeNPaths arising from Lindström–Gessel–Viennot lemma for S_{lam/mu}
 --     using the bijection described in [EC1, p.246-248] and [EC2, p.377-378]
 --     paths are SE
 JTlatticeNPaths = method(TypicalValue => List)
-JTlatticeNPaths (List,List,ZZ) := (lam,mu,N) -> (
+JTlatticeNPaths (Partition,Partition,ZZ) := (lam,mu,N) -> (
     --if N < #lam then return(Bag {});
-    mu = mu|toList((#lam-#mu):0);
+    mu = toList(mu)|toList((#lam-#mu):0);
     n := #lam;
-    --N := #lam;
 
     alpha := for j from 0 to #lam-1 list (
         (lam#j+n-(j+1))
@@ -449,15 +542,44 @@ JTlatticeNPaths (List,List,ZZ) := (lam,mu,N) -> (
     gamma := toList((#alpha):N);
     delta := toList((#beta):1);
     theType := (alpha,beta,gamma,delta);
+    print theType;
+    
 
     thePermList := permList n;
 
     typeList := for thePerm in thePermList list (actOnIndex(thePerm,alpha),beta,gamma,actOnIndex(thePerm,delta));
 
-    Bag flatten apply(typeList, theType -> allPaths(theType,"S","E"))
+    Bag flatten apply(typeList, theType -> allPaths(theType,"SE"))
     )
-JTlatticeNPaths (List,List) := (lam,mu) -> (
+JTlatticeNPaths (Partition,Partition) := (lam,mu) -> (
     JTlatticeNPaths(lam,mu,#lam)
     )
+
+toSSYT = method(TypicalValue => Sequence)
+toSSYT LatticeNPath := nPath -> (
+    (alpha,beta,gamma,delta) := type nPath;
+    
+    if not all(gamma,gam -> gam == gamma#0) then error "expected all paths to start at (x,N)";
+    if not all(delta,del -> del == delta#0) then error "expected all paths to end at (x,1)";
+    
+    n := #nPath; --number of SSYT rows
+    N := gamma#0; --number of variables
+
+    lam := for j from 0 to #alpha-1 list (alpha#j-n+j+1);
+    mu := for i from 0 to #beta-1 list (beta#i-n+i+1);
+    
+    
+    ans := for i from 0 to n-1 list (
+        lamPart := new Partition from {lam#i};
+        muPart := new Partition from {mu#i};
+        theWeight := toList weight nPath#i;
+        entryList := flatten for i from 0 to #theWeight-1 list toList((theWeight#i):(i+1));
+    
+        skewTableau(lamPart, muPart, entryList)
+        );
+
+    return toSequence ans
+    )
+
 
 end--
